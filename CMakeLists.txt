@@ -9,6 +9,7 @@ add_library(nblist SHARED)
 
 # add source files
 target_sources(nblist PRIVATE
+    src/pywrap.cpp
     src/nbList.h
     src/nbList.cpp
     src/box.h
@@ -38,6 +39,7 @@ endif()
 target_include_directories(nblist PRIVATE
     ${pybind11_INCLUDE_DIRS}
 )
+add_subdirectory(tests)
 
 # find openmp package and link against it
 find_package(OpenMP REQUIRED)

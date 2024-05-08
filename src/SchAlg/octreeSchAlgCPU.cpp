@@ -17,7 +17,7 @@ namespace dpnblist {
     }
 
     void OctreeNBL::insert(std::array<float,3> position, int pos_index, OctreeNode *node) {
-        if (node->positions.size() < 4) {
+        if (node->positions.size() < 8) {
             node->positions.push_back(position);
             node->pos_index.push_back(pos_index);
         } else {
