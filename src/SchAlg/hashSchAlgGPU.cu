@@ -135,9 +135,9 @@ namespace dpnblist
         int cell_ind_temp;
         for (int i = 0; i < 27; i++)
         {
-            cell_vector_temp.x = cell_vector.x + offset[i].x;
-            cell_vector_temp.y = cell_vector.y + offset[i].y;
-            cell_vector_temp.z = cell_vector.z + offset[i].z;
+            cell_vector_temp.x = cell_vector.x + offset[i].x + 1e-5;
+            cell_vector_temp.y = cell_vector.y + offset[i].y + 1e-5;
+            cell_vector_temp.z = cell_vector.z + offset[i].z + 1e-5;
 
             // 周期性边界处理
             if (cell_vector_temp.x < 0)
@@ -165,6 +165,13 @@ namespace dpnblist
             }
 
             cell_ind_temp = d_encodeMortonNumber(cell_vector_temp, rc);
+
+            // if (cell_index == 114880)
+            // {
+            //     printf("base x: %f, y: %f, z: %f\n", cell_vector.x, cell_vector.y, cell_vector.z);
+            //     printf("x: %f, y: %f, z: %f\n", cell_vector_temp.x, cell_vector_temp.y, cell_vector_temp.z);
+            //     printf("morton code : %d\n", cell_ind_temp);
+            // }
 
             neighbor_cells_list[27 * cell_index + i] = cell_ind_temp;
         }
@@ -243,10 +250,20 @@ namespace dpnblist
             vec3_float particle_xyz = inputs[new_indices[particle_seq]];
             int particle_mv = morton_list[particle_seq];
 
+            // if (new_indices[particle_seq] == 63)
+            // {
+            //     printf("device - morton value: %d\n", particle_mv);
+            // }
+
             int count = 0;
             for (int i = 0; i < 27; i++)
             {
                 int neighbor_cell_temp = neighbor_cells_list[particle_mv * 27 + i];
+
+                // if (new_indices[particle_seq] == 63)
+                // {
+                //     printf("device - neighbor cell: %d\n", neighbor_cell_temp);
+                // }
 
                 if (compact_list[neighbor_cell_temp].l != compact_list[neighbor_cell_temp].r)
                 {
@@ -259,6 +276,11 @@ namespace dpnblist
                         vec3_float near_neighbor_xyz = inputs[new_indices[near_neighbor_seq]];
 
                         float distance2 = cal_sqrt_distance_p(particle_xyz, near_neighbor_xyz, box_length);
+                        
+                        // if (new_indices[particle_seq] == 63 && new_indices[near_neighbor_seq] == 524)
+                        // {
+                        //     printf("device - distance2: %f\n", distance2);
+                        // }
 
                         if (distance2 - rc2 < 1e-10)
                         {
@@ -277,7 +299,7 @@ namespace dpnblist
         reset();
 
         // Set the number of neighboring particles
-        num_nb_particle = static_cast<int>(std::ceil(xyz.size() / (box_len.x * box_len.y * box_len.z)) * cell_size) * 100;
+        num_nb_particle = static_cast<int>(std::ceil(1.5 * (5 * xyz.size() / (box_len.x * box_len.y * box_len.z)) * r_cutoff_2 * r_cutoff + 45));
         if (num_nb_particle < 100) num_nb_particle = min_num_nb_particle;
 
         // Move the data to gpu

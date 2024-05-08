@@ -102,7 +102,7 @@ namespace dpnblist
         float diff;
         for (int i = 0; i < 3; i++) {
             diff = xyz1[i] - xyz2[i];
-            // difference[i] = diff;
+            difference[i] = diff;
 
             if (boundary_cells_sign[cell_index])
             {
@@ -279,18 +279,18 @@ namespace dpnblist
             std::vector<float> particle_xyz = xyz[new_indices[particle_seq]];
             int particle_morton = morton_values_list[new_indices[particle_seq]];
 
-            // if (new_indices[particle_seq] == 7308)
+            // if (new_indices[particle_seq] == 4)
             // {
-            //     std::cout << "7308 morton value: " << particle_morton << std::endl;
+            //     std::cout << "4 morton value: " << particle_morton << std::endl;
             // }
 
             int count = 0;
 
             for (auto& neighbor_cell : neighbor_cells_list[particle_morton])
             {
-                // if (new_indices[particle_seq] == 7308)
+                // if (new_indices[particle_seq] == 4)
                 // {
-                //     std::cout << "7308 neighbor cell: " << neighbor_cell << std::endl;
+                //     std::cout << "4 neighbor cell: " << neighbor_cell << std::endl;
                 // }
 
                 if (hash_list[neighbor_cell].first == -1) continue;
@@ -311,8 +311,11 @@ namespace dpnblist
                                         diff[1] * diff[1] + 
                                         diff[2] * diff[2];
                     
-                    // if (new_indices[particle_seq] == 3122 && new_indices[near_neighbor_seq] == 6435)
+                    // if (new_indices[particle_seq] == 4 && new_indices[near_neighbor_seq] == 919)
                     // {
+                    //     std::cout << particle_xyz[0] << " " << particle_xyz[1] << " " << particle_xyz[2] << std::endl;
+                    //     std::cout << near_neighbor_xyz[0] << " " << near_neighbor_xyz[1] <<  " " << near_neighbor_xyz[2] << std::endl;
+
                     //     std::cout << "Distance2: " << distance2 << " r_cutoff_2: " << r_cutoff_2 << " sign: " << (distance2 - r_cutoff_2 <= 1e-7) << std::endl;
                     // }
 
