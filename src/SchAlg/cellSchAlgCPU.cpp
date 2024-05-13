@@ -23,6 +23,7 @@ namespace dpnblist
             new_cutoff[i] = box_length[i] / _cell_length[i];
         }
         _ncells = _cell_length[0] * _cell_length[1] * _cell_length[2];
+        boundary_cells_sign.resize(_ncells, false);
         // A = {_cell_length[0], 0, 0, 0, _cell_length[1], 0, 0, 0, _cell_length[2]};
         // inv_A = A.invert();
         offset = {
@@ -176,11 +177,12 @@ namespace dpnblist
     */
 
     // std::vector<int> CellList::get_neighbors(int cell_index, std::vector<int> &neighbors, std::vector<Vec3<int>> &shifts) const
-    void CellList::get_neighbors(int cell_index, std::array<int, 27> &neighbors, std::vector<std::array<int, 3>> &shifts) const
+    void CellList::get_neighbors(int cell_index, std::array<int, 27> &neighbors, std::vector<std::array<int, 3>> &shifts)
     {
         // std::vector<int> neighbors(27, 0);
         std::array<int, 3> cell_vector = get_cell_vector(cell_index);
         int x_neb, y_neb, z_neb;
+        bool is_boundary = false;
         int n = 0;
         for (int x = cell_vector[0] - 1; x <= cell_vector[0] + 1; x++)
         {
@@ -197,33 +199,39 @@ namespace dpnblist
                     {
                         x_neb = x + _cell_length[0];
                         shift[0] = -1;
+                        is_boundary = true;
                     }
                     else if (x >= _cell_length[0])
                     {
                         x_neb = x - _cell_length[0];
                         shift[0] = 1;
+                        is_boundary = true;
                     }
 
                     if (y < 0)
                     {
                         y_neb = y + _cell_length[1];
                         shift[1] = -1;
+                        is_boundary = true;
                     }
                     else if (y >= _cell_length[1])
                     {
                         y_neb = y - _cell_length[1];
                         shift[1] = 1;
+                        is_boundary = true;
                     }
 
                     if (z < 0)
                     {
                         z_neb = z + _cell_length[2];
                         shift[2] = -1;
+                        is_boundary = true;
                     }
                     else if (z >= _cell_length[2])
                     {
                         z_neb = z - _cell_length[2];
                         shift[2] = 1;
+                        is_boundary = true;
                     }
                     shifts[n] = shift;
                     std::array<int, 3> neighbor_cell_vector = {x_neb, y_neb, z_neb};
@@ -237,6 +245,7 @@ namespace dpnblist
             }
         }
         neighbors[n] = cell_index;
+        boundary_cells_sign[cell_index] = is_boundary;
         // return neighbors;
     }
 
@@ -246,7 +255,7 @@ namespace dpnblist
         //float volume = box.get_lengths_cpu3()[0] * box.get_lengths_cpu3()[1] * box.get_lengths_cpu3()[2];
         //float pre_nnebs = xyz.size() / volume * 4 * 3.1415926 * r_cutoff * r_cutoff * r_cutoff / 3; // M_PI
         //_nnebs = int(pre_nnebs * 1.11 + 61);
-
+        cube_size = box.get_lengths_cpu3();
         std::array<float,3> cube_size = box.get_lengths_cpu3();
         _nnebs = static_cast<int>(std::ceil(1.5 * (5 * xyz.size() / (cube_size[0] * cube_size[1] * cube_size[2])) * r_cutoff * r_cutoff * r_cutoff + 45));
         if (_nnebs < 100) _nnebs = 100;
@@ -263,6 +272,30 @@ namespace dpnblist
         _neighborListArray.resize(_natoms);
     }
 
+    std::array<float,3> CellSearchCPU::get_min_diff_updated(const std::array<float,3>& xyz1, const std::array<float,3>& xyz2, int cell_index) {
+        std::array<float,3> difference;
+
+        float diff;
+        for (int i = 0; i < 3; i++) {
+            diff = xyz1[i] - xyz2[i];
+            difference[i] = diff;
+
+            if (_boundary_cells_sign[cell_index])
+            {
+                if (diff < -cube_size[i] / 2) {
+                    difference[i] = diff + cube_size[i];
+                }
+                else if (diff > cube_size[i] / 2) {
+                    difference[i] = diff - cube_size[i];
+                }else {
+                    difference[i] = diff;  // 在没有超出范围时，直接使用原始差值
+                }
+            }
+        }
+
+        return difference;
+    }
+
     void CellSearchCPU::get_neighbor_cell_array()
     {
         // #pragma omp parallel for
@@ -274,6 +307,7 @@ namespace dpnblist
             _neighbor_cell_Array[i] = neighbors;
             _neighbor_cell_Array_shifts[i] = shifts;
         }
+        _boundary_cells_sign = _cell_list.boundary_cells_sign;
     }
 
     //void CellSearchCPU::search(std::vector<std::vector<float>> &xyz)
@@ -360,14 +394,19 @@ namespace dpnblist
                         int j = _head[neighbor_cell];                         // 根据单元序号查找单元的第一个原子
                         for (int jj = 0; jj < nj; ++jj)
                         {
-                            std::array<float,3> pos_i = xyz[i];
-                            std::array<float,3> pos_j = xyz[j];
-                            float r2 = _box.calc_distance2(pos_i, pos_j);
-                            // Vec3<float> dr = pos_i - pos_j - shift * box_length;
-                            // float r2 = dr[0] * dr[0] + dr[1] * dr[1] + dr[2] * dr[2];
+                            // std::array<float,3> pos_i = xyz[i];
+                            // std::array<float,3> pos_j = xyz[j];
+                            // float r2 = _box.calc_distance2(pos_i, pos_j);
+                            std::array<float,3> dr = get_min_diff_updated(xyz[i], xyz[j], cell_index);  // for New MIC
+
+                            // std::array<float,3> dr;
+                            // for (int k = 0; k < 3; k++)
+                            // {
+                            //     dr[k] = pos_i[k] - pos_j[k] - shift[k] * box_length[k];
+                            // }
+                            float r2 = dr[0] * dr[0] + dr[1] * dr[1] + dr[2] * dr[2];
                             if ((r2 - rc2 < 1e-7) && (i != j))
                             {
-                                // std::cout << "r2: " << r2 << "  " << j << std::endl;
                                 // _neighlist_1d[_nnebs * i + nebcout] = j;
                                 // nebcout++;
                                 _neighborListArray[i].push_back(j);

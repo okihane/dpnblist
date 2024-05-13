@@ -29,6 +29,11 @@ In our neighbor list library, we provide a full type of neighbor list and includ
 
 Here's an example of usage:  
 ```python
+import nblist
+import numpy as np
+
+nblist.set_num_threads(4)
+print(nblist.get_max_threads())
 num_particle = 30000
 shape = (num_particle, 3)
 points = np.random.random(shape) * domain_size
