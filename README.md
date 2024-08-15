@@ -2,12 +2,17 @@
  Resable and Modular Neighborlist Lib
 
 ### Installation
-you can follow the below commands to build the project
+To build this project, please ensure the following versions of the build tools are installed:
+
+- **CMake**: version >= 3.15
+- **CUDA**: version >= 11.2
+- **GCC**: version >= 8.3.1
+
+To build and install the library, run:
 ```
-cmake -B build
-cmake --build build
+pip install .
 ```
-then a .so lib will be generated, which can be used in python.
+After installation, you can use the library in Python with the name `nblist`.
 
 ### Usage
 In our neighbor list library, we provide a full type of neighbor list and include three different types of algorithms: cell list, octree, and hash methods, and support CPU and GPU.  
